@@ -30,6 +30,10 @@ AVAILABLE_LLMS = [
     "o1-mini-2024-09-12",
     "o3-mini",
     "o3-mini-2025-01-31",
+    # Azure OpenAI models
+    "azure/gpt-4o",  
+    "azure/gpt-4o-mini",  
+    "azure/gpt-35-turbo",  
     # DeepSeek Models
     "deepseek-coder-v2-0724",
     "deepcoder-14b",
@@ -414,24 +418,43 @@ def extract_json_between_markers(llm_output: str) -> dict | None:
     return None  # No valid JSON found
 
 
-def create_client(model) -> tuple[Any, str]:
-    if model.startswith("claude-"):
-        print(f"Using Anthropic API with model {model}.")
-        return anthropic.Anthropic(), model
-    elif model.startswith("bedrock") and "claude" in model:
-        client_model = model.split("/")[-1]
-        print(f"Using Amazon Bedrock with model {client_model}.")
-        return anthropic.AnthropicBedrock(), client_model
-    elif model.startswith("vertex_ai") and "claude" in model:
-        client_model = model.split("/")[-1]
-        print(f"Using Vertex AI with model {client_model}.")
-        return anthropic.AnthropicVertex(), client_model
-    elif "gpt" in model:
-        print(f"Using OpenAI API with model {model}.")
-        return openai.OpenAI(), model
-    elif "o1" in model or "o3" in model:
-        print(f"Using OpenAI API with model {model}.")
-        return openai.OpenAI(), model
+def create_client(model) -> tuple[Any, str]:  
+    if model.startswith("claude-"):  
+        print(f"Using Anthropic API with model {model}.")  
+        return anthropic.Anthropic(), model  
+    elif model.startswith("bedrock") and "claude" in model:  
+        client_model = model.split("/")[-1]  
+        print(f"Using Amazon Bedrock with model {client_model}.")  
+        return anthropic.AnthropicBedrock(), client_model  
+    elif model.startswith("vertex_ai") and "claude" in model:  
+        client_model = model.split("/")[-1]  
+        print(f"Using Vertex AI with model {client_model}.")  
+        return anthropic.AnthropicVertex(), client_model  
+    elif model.startswith("azure/"):  
+        # Azure OpenAI support  
+        azure_model = model.split("/")[-1]  # Extract model name after "azure/"  
+        print(f"Using Azure OpenAI API with model {azure_model}.")  
+        
+        # Required Azure environment variables  
+        required_vars = ["AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_VERSION"]  
+        missing_vars = [var for var in required_vars if var not in os.environ]  
+        if missing_vars:  
+            raise ValueError(f"Missing required Azure OpenAI environment variables: {missing_vars}")  
+        
+        return (  
+            openai.AzureOpenAI(  
+                api_key=os.environ["AZURE_OPENAI_API_KEY"],  
+                azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],  
+                api_version=os.environ["AZURE_OPENAI_API_VERSION"],  
+            ),  
+            azure_model,  
+        )  
+    elif "gpt" in model:  
+        print(f"Using OpenAI API with model {model}.")  
+        return openai.OpenAI(), model  
+    elif "o1" in model or "o3" in model:  
+        print(f"Using OpenAI API with model {model}.")  
+        return openai.OpenAI(), model  
     elif model == "deepseek-coder-v2-0724":
         print(f"Using OpenAI API with {model}.")
         return (
